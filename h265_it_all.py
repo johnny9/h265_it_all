@@ -13,9 +13,9 @@ bitrate_command = 'ffprobe -i "{source}" -select_streams v:0 ' \
                   '-v quiet -show_entries format=bit_rate ' \
                   '-of default=noprint_wrappers=1:nokey=1'
 
-nvenc_test_command = 'ffmpeg -loglevel error ' \
+test_codec_command = 'ffmpeg -loglevel error ' \
                      '-f lavfi -i color=black:s=1080x1080 -vframes 1 ' \
-                     '-an -c:v hevc_nvenc -f null -'
+                     '-an -c:v {codec} -f null -'
 
 
 def is_a_videofile(filename: str) -> bool:
@@ -25,19 +25,29 @@ def is_a_videofile(filename: str) -> bool:
     return False
 
 
-def is_nvenc_supported() -> bool:
-    try:
-        subprocess.run(nvenc_test_command, shell=True, check=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
 def determine_codec() -> str:
-    if is_nvenc_supported():
+    try:
+        subprocess.run(test_codec_command.format(codec='hevc_nvenc'),
+                       shell=True, check=True)
         return 'hevc_nvenc'
-    else:
-        return 'libx265'
+    except subprocess.CalledProcessError:
+        pass
+
+    try:
+        subprocess.run(test_codec_command.format(codec='hevc_qsv'),
+                       shell=True, check=True)
+        return 'hevc_qsv'
+    except subprocess.CalledProcessError:
+        pass
+
+    try:
+        subprocess.run(test_codec_command.format(codec='hevc_vaapi'),
+                       shell=True, check=True)
+        return 'hevc_vaapi'
+    except subprocess.CalledProcessError:
+        pass
+
+    return 'libx265'
 
 
 def find_all_video_files(source_folder: str) -> list:
