@@ -13,12 +13,31 @@ bitrate_command = 'ffprobe -i "{source}" -select_streams v:0 ' \
                   '-v quiet -show_entries format=bit_rate ' \
                   '-of default=noprint_wrappers=1:nokey=1'
 
+nvenc_test_command = 'ffmpeg -loglevel error ' \
+                     '-f lavfi -i color=black:s=1080x1080 -vframes 1 ' \
+                     '-an -c:v hevc_nvenc -f null -'
+
 
 def is_a_videofile(filename: str) -> bool:
     for extension in video_extensions:
         if filename.endswith(extension):
             return True
     return False
+
+
+def is_nvenc_supported() -> bool:
+    try:
+        subprocess.run(nvenc_test_command, shell=True, check=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def determine_codec() -> str:
+    if is_nvenc_supported():
+        return 'hevc_nvenc'
+    else:
+        return 'libx265'
 
 
 def find_all_video_files(source_folder: str) -> list:
@@ -38,10 +57,11 @@ def new_bitrate(source: str):
 
 def convert_all_videos(source: str, destination: str):
     videos = find_all_video_files(source)
+    codec = determine_codec()
     for video in videos:
         output = Path(destination, video.stem + '.mkv').expanduser()
         command_string = convert_command.format(source=video.absolute(),
-                                                codec='libx265',
+                                                codec=codec,
                                                 bitrate=new_bitrate(video),
                                                 destination=output)
         print(command_string)
