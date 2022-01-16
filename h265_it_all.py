@@ -50,11 +50,11 @@ def determine_codec() -> str:
     return 'libx265'
 
 
-def find_all_video_files(source_folder: str) -> list:
+def find_all_files(source_folder: str, condition) -> list:
     files = []
     source_path = Path(source_folder).expanduser()
     for item in source_path.iterdir():
-        if item.is_file() and is_a_videofile(item.name):
+        if item.is_file() and condition(item.name):
             files.append(item)
     return files
 
@@ -66,7 +66,7 @@ def new_bitrate(source: str):
 
 
 def convert_all_videos(source: str, destination: str):
-    videos = find_all_video_files(source)
+    videos = find_all_files(source, is_a_videofile)
     codec = determine_codec()
     for video in videos:
         output = Path(destination, video.stem + '.mkv').expanduser()
@@ -78,11 +78,23 @@ def convert_all_videos(source: str, destination: str):
         subprocess.run(command_string, shell=True)
 
 
+def move_other_files(source: str, destination: str):
+    def not_a_video_file(filename: str):
+        return not is_a_videofile(filename)
+    files = find_all_files(source, not_a_video_file)
+    for file in files:
+        destination_path = Path(destination, file.name).expanduser()
+        file.replace(destination_path)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Convert all video files to h265'
     )
     parser.add_argument('-d', '--destination', required=True)
     parser.add_argument('-s', '--source', required=True)
+    parser.add_argument('--dont-move-other-files', action='store_true')
     args = parser.parse_args()
     convert_all_videos(args.source.strip(), args.destination.strip())
+    if not args.dont_move_other_files:
+        move_other_files(args.source.strip(), args.destination.strip())
