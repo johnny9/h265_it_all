@@ -101,6 +101,17 @@ def create_destination(destination: str):
         destination_path.mkdir(parents=True)
 
 
+def remove_source_directory(source: str):
+    source_path = Path(source).expanduser()
+    if source_path.is_dir:
+        for item in source_path.iterdir():
+            if item.is_dir():
+                print('WARNING: There are subdirectories in the'
+                      ' source folder. Not deleting')
+                return
+        source_path.rmdir()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Convert all video files to h265'
@@ -115,3 +126,5 @@ if __name__ == '__main__':
                        args.remove_old_files)
     move_other_files(args.source.strip(), args.destination.strip(),
                      (not args.dont_move_other_files), args.remove_old_files)
+    if args.remove_old_files:
+        remove_source_directory(args.source.strip())
