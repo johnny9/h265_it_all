@@ -87,6 +87,12 @@ def move_other_files(source: str, destination: str):
         file.replace(destination_path)
 
 
+def create_destination(destination: str):
+    destination_path = Path(destination).expanduser()
+    if not destination_path.exists():
+        destination_path.mkdir(parents=True)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Convert all video files to h265'
@@ -95,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--source', required=True)
     parser.add_argument('--dont-move-other-files', action='store_true')
     args = parser.parse_args()
+    create_destination(args.destination.strip())
     convert_all_videos(args.source.strip(), args.destination.strip())
     if not args.dont_move_other_files:
         move_other_files(args.source.strip(), args.destination.strip())
