@@ -65,7 +65,7 @@ def new_bitrate(source: str):
     return int(result.stdout) / 2
 
 
-def convert_all_videos(source: str, destination: str):
+def convert_all_videos(source: str, destination: str, remove_old: bool):
     videos = find_all_files(source, is_a_videofile)
     codec = determine_codec()
     for video in videos:
@@ -76,15 +76,23 @@ def convert_all_videos(source: str, destination: str):
                                                 destination=output)
         print(command_string)
         subprocess.run(command_string, shell=True)
+        if remove_old:
+            video.unlink()
 
 
-def move_other_files(source: str, destination: str):
+def move_other_files(source: str, destination: str, move: bool, remove: bool):
+    if not move and not remove:
+        return
+
     def not_a_video_file(filename: str):
         return not is_a_videofile(filename)
     files = find_all_files(source, not_a_video_file)
     for file in files:
-        destination_path = Path(destination, file.name).expanduser()
-        file.replace(destination_path)
+        if move:
+            destination_path = Path(destination, file.name).expanduser()
+            file.replace(destination_path)
+        elif remove:
+            file.unlink()
 
 
 def create_destination(destination: str):
@@ -100,8 +108,10 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--destination', required=True)
     parser.add_argument('-s', '--source', required=True)
     parser.add_argument('--dont-move-other-files', action='store_true')
+    parser.add_argument('--remove-old-files', action='store_true')
     args = parser.parse_args()
     create_destination(args.destination.strip())
-    convert_all_videos(args.source.strip(), args.destination.strip())
-    if not args.dont_move_other_files:
-        move_other_files(args.source.strip(), args.destination.strip())
+    convert_all_videos(args.source.strip(), args.destination.strip(),
+                       args.remove_old_files)
+    move_other_files(args.source.strip(), args.destination.strip(),
+                     (not args.dont_move_other_files), args.remove_old_files)
